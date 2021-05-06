@@ -1,0 +1,89 @@
+import pandas as pd
+import numpy as np
+
+walmart_df = pd.read_csv(r'C:\Users\Home\Documents\Web Analytics\Group Project\Walmart Master File.csv')
+
+#Drop the one redundant column
+walmart_df.drop('Price Per Unit',axis = 1, inplace=True)
+
+#Rename Some Columns
+walmart_df.rename(columns = {'Quantity':'Old_Quantity'},inplace=True)
+walmart_df.rename(columns = {'Product Price':'Price','Unit and Price':'Quantity Sold In','Unit':'Units','Quantity in LBS':'Quantity'},inplace=True)
+
+#We do not have "Sales" data for Walmart, so we will need to insert two blank columns to align with the overall master.
+sale_on_this_product = []
+for i in range(len(walmart_df['Store'])):
+    sale_on_this_product.append(None)
+    
+if_sale_original_price = []
+for i in range(len(walmart_df['Store'])):
+    if_sale_original_price.append(None)
+    
+walmart_df['Sale on This Product?'] = sale_on_this_product
+walmart_df['If Sale, Original Price'] = if_sale_original_price
+    
+
+#Reorder Walmart columns to match order in overall master file
+column_order = ['Date','Store','Product Type','Product Name','Price',
+              'Quantity Sold In','Sale on This Product?','If Sale, Original Price','Quantity','Old_Quantity','Units']
+walmart_df = walmart_df[column_order]
+
+#Where "Quantity" is blank and "Units" are "EA", put a 1 in the "Quantity" list
+quantity = []
+for i in range(len(walmart_df['Store'])):
+    if walmart_df['Units'][i] == 'EA' and pd.isna(walmart_df['Quantity'][i]) == True:
+        quantity.append(1)
+    else:
+        quantity.append(walmart_df['Quantity'][i])
+
+walmart_df['Quantity'] = quantity
+
+#If "Quantity" is still blank, even after appending the "1"s into the list, drop that observation 
+#as something is wrong in the original Walmart code and we have a sufficient number of observations to allow the luxury of dropping.
+walmart_df = walmart_df[walmart_df['Quantity'].notna()]
+
+#reset the index before the next loop
+walmart_df.reset_index(drop=True,inplace=True)
+
+#Where "Quantity" is 0, input the value from the "Old_Quantity"
+quantity2 = []
+for i in range(len(walmart_df['Quantity'])):
+    if walmart_df['Quantity'][i] == 0:
+        quantity2.append(walmart_df['Old_Quantity'][i])
+    else:
+        quantity2.append(walmart_df['Quantity'][i])
+
+walmart_df['Quantity'] = quantity2
+
+#drop "Old_Quantity" column
+walmart_df.drop('Old_Quantity',axis = 1, inplace=True)
+
+#Deal with wierd "x-y" formatting in a few cells in Quantity column by splitting the string, taking first list
+#element, and finally converting to a float
+quantity3 = []
+for i in range(len(walmart_df['Quantity'])):
+    if type(walmart_df['Quantity'][i]) == str:
+        quantity3.append(float(walmart_df['Quantity'][i].split('-')[0]))
+    else:
+        quantity3.append(walmart_df['Quantity'][i])
+
+walmart_df['Quantity'] = quantity3
+
+#Scrub "Units" such that we are left with only "EA" and "LBS"
+#Labels whose corresponding quantities were left unconverted to LBS as of 11/25/2020: G, Quart 
+need_to_be_EA = ['Bunch','ct','Dry Pint','l','Pack','pcs','pk','slices','Slices']
+need_to_be_LBS = ['bag','Bag','Clamshell','G','GALLON','LB','Lb Bag','LTR','OZ','Ounce (Family Size)','PINT','Quart']
+units = []
+for i in range(len(walmart_df['Units'])):
+    if walmart_df['Units'][i] in need_to_be_EA:
+        units.append('EA')
+    elif walmart_df['Units'][i] in need_to_be_LBS:
+        units.append('LBS')
+    else:
+        units.append(walmart_df['Units'][i])
+
+walmart_df['Units'] = units
+
+#walmart_df.to_csv(r'C:\Users\Home\Documents\Web Analytics\Group Project\Walmart Intermediate.csv',index=False)
+
+walmart_df.head()
