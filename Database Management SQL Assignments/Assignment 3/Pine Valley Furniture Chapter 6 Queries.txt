@@ -1,0 +1,277 @@
+/* 6-45: WTF? All customers have placed orders; this query is blank */
+select customerid
+from order_T
+where orderdate = NULL;
+
+/*6-46:*/
+select count(prod.productid) as Products_in_Line, sub.productlinename, sub.Average_Product_Price_Per_Line
+from
+    (select prod.productlineid, pl.productlinename, avg(prod.productstandardprice) as Average_Product_Price_Per_Line
+    from productline_T pl
+    left outer join product_T prod
+    on pl.productlineid = prod.productlineid
+     group by pl.productlinename, prod.productlineid) sub
+
+left outer join product_T prod
+on prod.productlineid = sub.productlineid
+group by productlinename, Average_Product_Price_Per_Line;
+
+/*6-47:*/
+select count(prod.productid) as Products_in_Line, sub.productlinename, sub.Average_Product_Price_Per_Line
+from
+    (select prod.productlineid, pl.productlinename, avg(prod.productstandardprice) as Average_Product_Price_Per_Line
+    from productline_T pl
+    left outer join product_T prod
+    on pl.productlineid = prod.productlineid
+     group by pl.productlinename, prod.productlineid) sub
+
+left outer join product_T prod
+on prod.productlineid = sub.productlineid
+group by productlinename, Average_Product_Price_Per_Line
+having Average_Product_Price_Per_Line > 200;
+
+/*6-48:*/
+SELECT sub1.Manager, sub2.Direct_Reports, sub1.Head_Count
+FROM 
+    (SELECT M.EmployeeName AS Manager, count(E.EmployeeName) as Head_Count
+    FROM Employee_T E, Employee_T M
+    WHERE E.EmployeeSupervisor = M.EmployeeiD
+    group by m.employeename) sub1
+
+left outer join
+    (SELECT M.EmployeeName AS Manager, E.EmployeeName as Direct_Reports
+    FROM Employee_T E, Employee_T M
+    WHERE E.EmployeeSupervisor = M.EmployeeiD) sub2
+on sub1.manager = sub2.manager
+where Head_Count > 2;
+
+/*6-49*/
+SELECT distinct sub1.Manager, sub1.Manager_Birthday, sub2.Direct_Reports, sub2.Direct_Report_Birthdate
+FROM 
+    (SELECT M.EmployeeName AS Manager, M.employeebirthdate as Manager_Birthday
+    FROM Employee_T E, Employee_T M
+    WHERE E.EmployeeSupervisor = M.EmployeeiD) sub1
+
+left outer join
+    (SELECT M.EmployeeName AS Manager, E.EmployeeName as Direct_Reports, e.employeebirthdate as Direct_Report_Birthdate
+    FROM Employee_T E, Employee_T M
+    WHERE E.EmployeeSupervisor = M.EmployeeiD) sub2
+on sub1.manager = sub2.manager;
+
+/*6-50*/
+select ord.customerid, ord.orderid, ordlin.productid, ord.orderdate 
+from order_T ord
+ 
+left outer join orderline_T ordlin
+on ord.orderid = ordlin.orderid;
+
+/*6-51*/
+select ordlin.orderid, ordlin.productid,  prod.productstandardprice, ordlin.orderedquantity, prod.productstandardprice * ordlin.orderedquantity as Total_Price_Per_ProductID
+from orderline_T ordlin
+
+left outer join product_T prod
+on ordlin.productid = prod.productid
+where ordlin.orderid = 1;
+
+/*6-52*/
+select w1.workcenterid, count(w1.employeeid), w2.workcenterlocation
+from worksin_T w1
+left outer join workcenter_t w2
+on w1.workcenterid = w2.workcenterid
+group by w1.workcenterid, w2.workcenterlocation;
+
+/*6-53*/
+select w.workcenterid, w.employeeid, empskill.skillid
+from worksin_T w
+left outer join employeeskills_t empskill
+on w.employeeid = empskill.employeeid
+where empskill.skillid = 'QC1';
+
+/*6-54*/
+select sub1.orderid, sum(sub1.Total_Price_Per_ProductID) as Total_OrderID_Price
+from (
+    select ordlin.orderid, ordlin.productid,  prod.productstandardprice, ordlin.orderedquantity, prod.productstandardprice * ordlin.orderedquantity as Total_Price_Per_ProductID
+    from orderline_T ordlin
+
+    left outer join product_T prod
+    on ordlin.productid = prod.productid
+    where ordlin.orderid = 1) sub1
+group by sub1.orderid;
+
+/*6-55*/
+select supp.vendorid, supp.materialid, supp.supplyunitprice, rawmat.materialstandardprice, supp.supplyunitprice/rawmat.materialstandardprice as Unit_Price_to_Standard_Price_Ratio
+from supplies_T supp
+left outer join rawmaterial_t rawmat
+on supp.materialid = rawmat.materialid
+where supp.supplyunitprice/rawmat.materialstandardprice >=4;
+
+/*6-56:*/
+select prod.productid, prod.productdescription, prod.productstandardprice, sub1.Total_Material_Cost_per_ProductID
+from product_t prod
+
+left outer join (
+    select u.productid, sum(u.quantityrequired * rawmat.materialstandardprice) as Total_Material_Cost_per_ProductID
+    from uses_t u
+
+    left outer join rawmaterial_T rawmat
+    on u.materialid = rawmat.materialid
+    group by u.productid) sub1
+on prod.productid = sub1.productid;
+
+/*6-57:*/
+select ord.orderid, (sub1.Price_Per_Order - pay.paymentamount) as Total_Due, pay.paymentamount, sub1.Price_Per_Order
+from order_T ord
+
+left outer join payment_T pay
+on ord.orderid = pay.orderid
+
+left outer join(
+    select ordlin.orderid, sum(ordlin.orderedquantity * prod.productstandardprice) as Price_Per_Order
+    from orderline_T ordlin
+
+    left outer join product_T prod
+    on prod.productid = ordlin.productid
+    group by ordlin.orderid) sub1
+on ord.orderid = sub1.orderid
+where pay.paymentamount is not null
+order by Total_Due desc;
+
+/*6-58:*/
+select ord.customerid, sum(ordlin.orderedquantity) as Quantity_Ordered, prod.productdescription
+from product_t prod
+
+left outer join orderline_T ordlin
+on prod.productid = ordlin.productid
+
+left outer join order_T ord
+on ord.orderid = ordlin.orderid
+where prod.productdescription like '%Computer%'
+group by ord.customerid, prod.productdescription;
+
+/*6-59:*/
+select distinct ord.customerid, prodline.productlinename
+from order_T ord
+
+left outer join orderline_T ordlin
+on ord.orderid = ordlin.orderid
+
+left outer join product_T prod
+on ordlin.productid = prod.productid
+
+left outer join productline_T prodline
+on prod.productlineid  = prodline.productlineid
+where prodline.productlinename = 'Basic' and extract (month from ord.orderdate) = 3 and extract (year from ord.orderdate) = 2018;
+
+/* 6-60: note: I swear the COUNT function is counting wrong and I cannot figure out why. Example: Customer 16 has 4 product IDs, not 8 */
+select distinct count(ordlin.productid) as Product_Types_Ordered, ord.customerid, prodline.productlinename 
+from order_T ord
+
+left outer join orderline_T ordlin
+on ord.orderid = ordlin.orderid
+
+left outer join product_T prod
+on ordlin.productid = prod.productid
+
+left outer join productline_T prodline
+on prod.productlineid  = prodline.productlineid
+where prodline.productlinename = 'Basic' and extract (month from ord.orderdate) = 3 and extract (year from ord.orderdate) = 2018
+group by ord.customerid, prodline.productlinename;
+
+/* 6-61: note: I swear the COUNT function is counting wrong and I cannot figure out why. Example: Customer 16 has 3 orders under Productid 4. But everything else calced correctly! */
+select distinct ordlin.productid, sum(ordlin.orderedquantity) as Number_of_Items_Purchased_Within_Product_Line, ord.customerid, prodline.productlinename 
+from order_T ord
+
+left outer join orderline_T ordlin
+on ord.orderid = ordlin.orderid
+
+left outer join product_T prod
+on ordlin.productid = prod.productid
+
+left outer join productline_T prodline
+on prod.productlineid  = prodline.productlineid
+where prodline.productlinename = 'Basic' and extract (month from ord.orderdate) = 3 and extract (year from ord.orderdate) = 2018
+group by ord.customerid, prodline.productlinename, ordlin.productid;
+
+/* 6-62 */
+select distinct emp.Manager
+from (
+    select e.employeename as Employee, m.employeename as Manager, e.employeeid
+    from employee_t e, employee_t m
+    where e.employeeid = m.employeesupervisor) emp
+    
+left outer join (
+    select employeeid, skillid
+    from employeeskills_t
+    where skillid = 'BS12') empskill
+on empskill.employeeid = emp.employeeid
+order by emp.Manager;
+
+/*6-63 */
+select sales.salespersonname, prod.productfinish, sum(ordlin.orderedquantity) as TotSales
+from order_T ord
+
+left outer join orderline_T ordlin
+on ord.orderid = ordlin.orderid
+
+left outer join product_t prod
+on ordlin.productid = prod.productid
+
+left outer join salesperson_t sales
+on ord.salespersonid = sales.salespersonid
+where prod.productfinish is not null
+group by sales.salespersonname, prod.productfinish;
+
+/* 6-64: */
+select work.workcenterid, count(prod_in.productid) as Total_Products
+from producedin_T prod_in
+
+right outer join workcenter_T work
+on prod_in.workcenterid = work.workcenterid
+group by work.workcenterid;
+
+/* 6-65 */
+select cust.customername, cust.customerstate, count(ven.vendorstate) as NumVendors
+from customer_T cust
+left outer join vendor_t ven
+on cust.customerstate = ven.vendorstate
+group by cust.customername, cust.customerstate;
+
+/* 6-66 */
+select orderid, paymentamount
+from payment_T;
+
+minus
+
+select orderid, paymentamount
+from payment_T
+where paymentamount is not null;
+
+/* 6-67 */
+select customerstate
+from customer_T;
+
+minus
+
+select salespersonstate
+from salesperson_T;
+
+/* 6-68 */
+
+
+/*6-69:*/
+select cust.customerid, cust.customername, ord.orderid
+from customer_T cust
+
+left outer join order_T ord
+on cust.customerid = ord.customerid;
+
+/*6-78: */
+select prod.productid, prod.productlineid, prod.productdescription, prod.productstandardprice, sub.Average_Price_By_Product_Line
+from product_T prod
+
+left outer join (
+    select productlineid, round(avg(productstandardprice), 2) as Average_Price_By_Product_Line
+    from product_T
+    group by productlineid) sub
+on prod.productlineid = sub.productlineid
+where prod.productstandardprice < sub.Average_Price_By_Product_Line;

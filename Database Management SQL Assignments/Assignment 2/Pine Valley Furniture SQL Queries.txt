@@ -1,0 +1,233 @@
+/* 5-57*/
+alter table Product_T
+add Qty_On_Hand int
+add constraint length_check check (length(Qty_On_Hand)=5)
+add constraint positive_check check (Qty_On_Hand > 0);
+
+/*5-58: This should fail due to the negative number and the above contraint*/
+insert into Product_T (productid, productlineid, productdescription,productfinish,productstandardprice,Qty_On_Hand)
+values (9,2,'End Table','Cherry',69,-420);
+
+/*5-59: we expect part b to get rejected*/
+/*a*/
+insert into Order_T (orderid,customerid,orderdate,fulfillmentdate, salespersonid, shipadrsid)
+values (78,1,to_date('09/03/2020','mm/dd/yyyy'), to_date('09/14/2020','mm/dd/yyyy'),3,1);
+
+/*b*/
+insert into Order_T (orderid,customerid,orderdate)
+values (1,400,to_date('09/03/2020','mm/dd/yyyy'));
+
+/*5-60*/
+/*a*/ select count(workcenterid)
+from workcenter_T;
+
+/*b: this answer seems stupid; review later*/
+select workcenterlocation
+from workcenter_T;
+
+/*5-61*/
+select salespersonname
+from salesperson_T
+where salespersonname like '% L%';
+
+/*5-62: this would be something like the query, except the table is empty*/
+select employeename
+from employee_T
+where extract(year from employeedatehired) = 2005;
+
+
+/*5-63*/
+select customername, customerstate, customerpostalcode
+from customer_T
+where customerstate in ('CA','WA')
+order by customerpostalcode desc;
+
+/*5-64*/
+select count(customername), customerstate
+from customer_T
+group by customerstate;
+
+/*5-65:*/
+select materialname,material, thickness, width
+from rawmaterial_T
+where material = 'Cherry'
+and thickness = to_char(12)
+and width = to_char(12);
+
+select *
+from rawmaterial_t;
+
+/*5-66:*/
+select materialid, materialname, material, materialstandardprice, thickness
+from rawmaterial_T
+where material in ('Cherry', 'Walnut', 'Pine')
+order by material, materialstandardprice, thickness;
+
+/*5-67*/
+select productlineid, avg(productstandardprice) as "Average_Price"
+from product_T
+group by productlineid;
+
+/*5-68*/
+select productlineid, avg(productstandardprice) as "Average_Price"
+from product_T
+where productstandardprice > 200
+group by productlineid
+having avg(productstandardprice) > 500;
+
+/*5-69:*/
+select productid, orderedquantity as "TotalOrdered"
+from orderline_T
+where orderedquantity > 0
+order by orderedquantity desc;
+
+/*5-70:*/
+select ordlin.orderid, ordlin.productid, calc."Total_Products_Ordered_by_OrderID" from
+    (select orderid, sum(orderedquantity) as "Total_Products_Ordered_by_OrderID"
+     from orderline_T
+     group by orderid) calc
+
+left outer join orderline_T ordlin
+on ordlin.orderid = calc.orderid;
+
+/*5-71:*/
+select customerid, count(orderid)
+from order_T
+group by customerid;
+
+
+/*5-72*/
+select sp.salespersonid, sp.salespersonname, dbi.customerid
+from salesperson_T sp
+left outer join doesbusinessin_T dbi
+on sp.salesterritoryid = dbi.territoryid
+order by salespersonid;
+
+/*5-73:*/
+select productid, orderedquantity as "NumOrders"
+from orderline_T
+order by orderedquantity desc;
+
+/*5-74:*/
+select paymentid, orderid, paymentamount, paymentdate, substr(paymentcomment,0,10)
+from payment_T
+where paymentdate > to_date('03/10/2018','mm/dd/yyyy');
+
+
+/*5-75:*/
+select cust.customername, ord.customerid, count(ord.orderid) as "Number_of_2018_Orders"
+from customer_T cust
+
+left outer join order_T ord
+on cust.customerid = ord.customerid
+where extract(year from ord.orderdate) = 2018
+group by cust.customername, ord.customerid;
+
+/*5-76*/
+select sp.salespersonid, sp.salespersonname, count(ord.orderid) as Number_of_Orders
+from salesperson_T sp
+left outer join order_T ord
+on sp.salespersonid = ord.salespersonid
+group by sp.salespersonid, sp.salespersonname;
+
+/*5-77*/
+select cust.customerid, cust.customername, count(ord.orderid) as "Total_Orders"
+from customer_T cust
+
+left outer join order_T ord
+on cust.customerid = ord.customerid
+group by cust.customerid, cust.customername
+having count(ord.orderid) > 2;
+
+/*5-78: note: the textbook states "everything but the last 3 characters", but the data does not show this to be the case. For ease, I am going with the textbook.*/
+/* Also, I cannot for the life of me get my count(vendorid) to give me the right number. No damned idea why */
+select substr(replace(materialid,'''',''),0,length(materialid)-5) as "material_type", avg(supplyunitprice) as "Average_Material_Type_Price", count(vendorid)
+from supplies_T
+group by substr(replace(materialid,'''',''),0,length(materialid)-5);
+
+/*5-79*/
+select salesterritoryid, count(salespersonname)
+from salesperson_T
+group by salesterritoryid
+having count(salespersonname)> 1
+order by salesterritoryid desc;
+
+/*5-80*/
+select productid, count(orderid)
+from orderline_T
+group by productid
+order by count(orderid) desc;
+
+/*5-81:this would be something like the query, except the table is empty*/
+select employeename, employeestate, floor((employeedatehired-employeebirthdate)/365) as Age
+from employee_T
+where employeestate in ('TN','FL');
+
+/*5-82*/
+select productfinish, avg(productstandardprice) as "Average Product Standard Price"
+from product_T
+group by productfinish
+order by "Average Product Standard Price";
+
+/*5-83*/
+select salesterritoryid, count(salespersonid) as NumSalesPerson
+from salesperson_T
+group by salesterritoryid
+having count(salespersonid) > 1;
+
+/*5-84:*/
+select sp.salespersonid, sp.salespersonname, count(ord.orderid) as Number_of_Orders
+from salesperson_T sp
+left outer join order_T ord
+on sp.salespersonid = ord.salespersonid
+where sp.salespersonid not in (3,5,9)
+group by sp.salespersonid, sp.salespersonname;
+
+/*5-85: will have to refine to 2018 if new data is acquired*/
+select sp.salespersonid, sp.salespersonname, to_char(ord.orderdate,'MON') as Order_Month, count(ord.orderid) as Orders_by_Month
+from salesperson_T sp
+
+left outer join order_T ord
+on sp.salespersonid = ord.salespersonid
+group by sp.salespersonid, sp.salespersonname, to_char(ord.orderdate,'MON')
+order by salespersonname;
+
+/*5-86: can't change width from a Varchar to a Number. Cannot do comparison*/
+select material, width
+from rawmaterial_T
+where material not in ('Cherry','Oak')
+and to_number(width) > 10;
+
+
+/*5-87: this might need data from the rawmaterials table; which we do not have*/
+select productid, productdescription, productfinish, productstandardprice
+from product_T
+where productfinish = 'Cherry' and productstandardprice < 300
+or productfinish = 'Oak' and productstandardprice > 400;
+
+/*5-88*/
+select orderid, customerid, orderdate
+from order_T
+order by orderdate desc;
+
+/*5-89:*/
+select cust.customerid, count(ord.orderid) as Customer_Orders, ratio_to_report(count(ord.orderid)) over () Ratio_of_Total
+from customer_T cust
+
+left outer join order_T ord
+on cust.customerid = ord.customerid
+group by cust.customerid;
+
+/*5-90: This gets the pivoted info, but how to rename the columns?*/
+select * from
+    (select productid,orderedquantity
+     from orderline_T)
+pivot (sum(orderedquantity)
+      for productid in (1,2,7));
+      
+/*5-91*/
+select avg(Customers_Per_State) as Average_Customers_Per_State
+from (
+    select count(customername) as Customers_Per_State, customerstate
+    from customer_T
+    group by customerstate);

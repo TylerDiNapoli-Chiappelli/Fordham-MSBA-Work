@@ -1,0 +1,171 @@
+/* Question #1 */
+/* a */
+insert into customer_T (customerid, customername, customeraddress, customercity, customerstate, customerpostalcode)
+values (27, 'Tyler DiNapoli-Chiappelli', '140 West 62nd Street', 'New York', 'NY', '10023');
+
+/* b */
+insert into doesbusinessin_T (customerid, territoryid)
+values (27, 3);
+
+/* c */
+insert into customershipaddress_T (shipaddressid, customerid, territoryid, shipaddress, shipcity, shipstate, shipzip)
+values (35, 27, 3, '0000 Broadway', 'New York', 'NY', '10025');
+
+/* d */
+insert into order_T (orderid, customerid, orderdate, fulfillmentdate, salespersonid)
+values (93, 27, to_date('09/23/2020','mm/dd/yyyy') ,null, 3);
+
+/* e */
+insert into orderline_T (orderlineid, orderid, productid, orderedquantity)
+values (100, 93, 3, 2);
+
+/* Question #2: */
+/*5-57 query: */
+alter table Product_T
+add Qty_On_Hand int
+add constraint length_check check (length(Qty_On_Hand)=5)
+add constraint positive_check check (Qty_On_Hand > 0);
+
+/*5-58 query and “failure” result: */
+insert into Product_T (productid, productlineid, productdescription,productfinish,productstandardprice,Qty_On_Hand)
+values (9,2,'End Table','Cherry',69,-420);
+
+/*Query to select all columns from Product_T table: */
+select *
+from product_t;
+
+/* Question #3 */
+/* a: Please note, per the book's instructions, this view creation query and following table query were copied and pasted, with only minor edits, directly from page 270 */
+CREATE VIEW TSales AS
+SELECT SalespersonName, ProductDescription, SUM(OrderedQuantity) AS Totorders
+FROM Salesperson_T, Orderline_T, Product_T, Order_T
+WHERE Salesperson_T.SalespersonID = Order_T.SalespersonID
+AND Order_T.OrderID = Orderline_T.OrderID
+AND Orderline_T.ProductID = Product_T.ProductID
+GROUP BY SalespersonName, ProductDescription;
+---------------------------------------------------------------  
+select salespersonname, productdescription, totorders
+from TSales A
+where totorders = (
+    select max(totorders)
+    from TSales B
+    where A.salespersonname = B.salespersonname);
+    
+/* b: Please note, though the book's instructions on page 271 stated to use their table creation query, it was riddled with errors and it was more efficient to re-write my own */
+create view TopTerritory as
+select sale.salespersonname, dbi.territoryid, prod.productdescription, sum(ordlin.orderedquantity)  as End_Table_Quantity_by_Territory
+from salesperson_T sale
+
+left outer join order_T ord
+on sale.salespersonid = ord.salespersonid
+
+left outer join orderline_T ordlin
+on ord.orderid = ordlin.orderid
+
+left outer join product_T prod
+on ordlin.productid = prod.productid
+
+left outer join doesbusinessin_T dbi
+on ord.customerid = dbi.customerid
+where prod.productdescription like '%End Table%'
+group by dbi.territoryid, prod.productdescription, sale.salespersonname;
+----------------------------------------------------------
+select *
+from topterritory
+where End_Table_Quantity_by_Territory = (
+    select max(End_Table_Quantity_by_Territory)
+    from topterritory);
+    
+/* Question #4 */
+
+/*Find all orders for customers in Northeast territory that have not yet been filled (i.e., fulfillment date is null)*/
+/* Please note: a manual look into the Territory_T table showed that "Northeast" is territoryid 3 */
+select ord.orderid, ord.fulfillmentdate, custship.territoryid
+from order_T ord
+
+left outer join customershipaddress_T custship
+on ord.customerid = custship.customerid
+where custship.territoryid = 3 and ord.fulfillmentdate is null;
+
+select *
+from territory_t;
+
+/*5-63:*/
+select customername, customerstate, customerpostalcode
+from customer_T
+where customerstate in ('CA','WA')
+order by customerpostalcode desc;
+
+/*5-67:*/
+select productlineid, round(avg(productstandardprice),2) as "Average_Price"
+from product_T
+group by productlineid;
+
+/*5-68:*/
+select productlineid, round(avg(productstandardprice),2) as "Average_Price"
+from product_T
+where productstandardprice > 200
+group by productlineid
+having avg(productstandardprice) >= 500;
+
+/*5-77:*/
+select cust.customerid, count(ord.orderid) as "Total_Orders"
+from customer_T cust
+
+left outer join order_T ord
+on cust.customerid = ord.customerid
+group by cust.customerid
+having count(ord.orderid) > 2;
+
+/*6-46:*/
+select count(prod.productid) as Products_in_Line, sub.productlinename, sub.Average_Product_Price_Per_Line
+from
+    (select prod.productlineid, pl.productlinename, round(avg(prod.productstandardprice),2) as Average_Product_Price_Per_Line
+    from productline_T pl
+    left outer join product_T prod
+    on pl.productlineid = prod.productlineid
+     group by pl.productlinename, prod.productlineid) sub
+
+left outer join product_T prod
+on prod.productlineid = sub.productlineid
+group by productlinename, Average_Product_Price_Per_Line;
+
+/*6-59:*/
+select distinct ord.customerid, prodline.productlinename
+from order_T ord
+
+left outer join orderline_T ordlin
+on ord.orderid = ordlin.orderid
+
+left outer join product_T prod
+on ordlin.productid = prod.productid
+
+left outer join productline_T prodline
+on prod.productlineid  = prodline.productlineid
+where prodline.productlinename = 'Basic' and extract (month from ord.orderdate) = 3 and extract (year from ord.orderdate) = 2018;
+
+/* 6-64: */
+select work.workcenterid, count(prod_in.productid) as Total_Products
+from producedin_T prod_in
+
+right outer join workcenter_T work
+on prod_in.workcenterid = work.workcenterid
+group by work.workcenterid;
+
+/*6-69:*/
+select cust.customerid, cust.customername, ord.orderid
+from customer_T cust
+
+left outer join order_T ord
+on cust.customerid = ord.customerid;
+
+/*6-78:*/
+select prod.productid, prod.productlineid, prod.productdescription, prod.productstandardprice, sub.Average_Price_By_Product_Line
+from product_T prod
+
+left outer join (
+    select productlineid, round(avg(productstandardprice), 2) as Average_Price_By_Product_Line
+    from product_T
+    group by productlineid) sub
+on prod.productlineid = sub.productlineid
+where prod.productstandardprice < sub.Average_Price_By_Product_Line;

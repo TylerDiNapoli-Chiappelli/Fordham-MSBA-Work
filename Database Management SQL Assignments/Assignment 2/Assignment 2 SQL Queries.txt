@@ -1,0 +1,72 @@
+/*5-46:*/
+select tutorid, status
+from tutor
+where status = 'Temp Stop' or status = 'Active'
+order by status;
+
+/*5-47:*/
+select studentid, read, All_Student_Score_Average
+from (select studentid, read, avg (read) over () as All_Student_Score_Average from student)
+where read = (select max(read) from student)
+or read = (select min(read) from student);
+
+/*5-48:*/
+select tutorid, count(studentid) as Students_Assigned_To_Tutor
+from match_history
+group by tutorid
+having count(studentid) > 1;
+
+/*5-49:*/
+select tutorid
+from tutor
+minus
+select tutorid
+from match_history;
+
+/*5-50:*/
+select studentid, extract (month from startdate) "Start Month"
+from match_history
+where extract (month from startdate) <= 5;
+
+/*5-51:*/
+select studentid, read
+from student
+where read = (
+    select max(read)
+    from student);
+
+/*5-52:*/
+select sub1.grp, sub1.Average_Read_Score_by_Group, sub2.Min_Read_Score_by_Group, sub3.Max_Read_Score_by_Group 
+from (
+    select grp, avg(read) as Average_Read_Score_by_Group
+    from student
+    group by grp) sub1
+left outer join (
+    select grp, min(read) as Min_Read_Score_by_Group
+    from student
+    group by grp) sub2
+on sub1.grp = sub2.grp
+left outer join (
+    select grp, max(read) as Max_Read_Score_by_Group
+    from student
+    group by grp) sub3
+on sub2.grp = sub3.grp;
+
+/*5-53:*/
+select studentid, coalesce (to_char(enddate-startdate),'student is still in program') "Student Days in Program"
+from match_history;
+
+/*5-54:*/
+select tutorid, certdate, status
+from tutor
+where status = 'Dropped' and certdate > to_date('04/01/2018','mm/dd/yyyy');
+
+/*5-55:*/
+select tutorid, status
+from tutor
+where status = 'Active';
+
+/*5-56:*/
+select avg(enddate - startdate) as Average_Student_Days_in_Program_for_Departed_Students
+from match_history
+where enddate is not null;
